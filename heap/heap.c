@@ -50,7 +50,12 @@ void descer(Registro* heap, int i, int n) {
 }
 
 Registro* inserir(Registro* heap, Registro novo, int* n) {
-    heap = realloc(heap, sizeof(Registro) * (*n + 2));
+    Registro* temp = realloc(heap, sizeof(Registro) * (*n + 2));
+    if (!temp) {
+        printf("Erro na alocação de memória.\n");
+        exit(1);
+    }
+    heap = temp;
     (*n)++;
     heap[*n] = novo;
     subir(heap, *n);
@@ -123,7 +128,7 @@ void menuHeap(Registro* heap, int* n) {
         printf("4. Salvar e sair\n");
         printf("Escolha: ");
         scanf("%d", &opcao);
-        getchar(); // consumir \n
+        getchar();
 
         switch (opcao) {
             case 1:
@@ -136,7 +141,7 @@ void menuHeap(Registro* heap, int* n) {
 
                 printf("CPF: ");
                 fgets(novo.cpf, 12, stdin);
-                getchar(); // consumir \n
+                novo.cpf[strcspn(novo.cpf, "\n")] = '\0';
 
                 printf("Nota: ");
                 scanf("%f", &novo.nota);
