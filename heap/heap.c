@@ -60,7 +60,7 @@ Registro* inserir(Registro* heap, Registro novo, int* n) {
 void salvarHeap(Registro* heap, int n, const char* nomeArquivo) {
     FILE* f = fopen(nomeArquivo, "wb");
     if (!f) {
-        perror("Erro ao salvar heap");
+        printf("Erro ao salvar heap");
         return;
     }
     fwrite(&n, sizeof(int), 1, f);
@@ -71,7 +71,7 @@ void salvarHeap(Registro* heap, int n, const char* nomeArquivo) {
 Registro* carregarRegistrosOriginais(int* total, const char* nomeArquivo) {
     FILE* f = fopen(nomeArquivo, "rb");
     if (!f) {
-        perror("Erro ao abrir registros.dat");
+        printf("Erro ao abrir registros.dat");
         exit(1);
     }
 
@@ -86,6 +86,20 @@ Registro* carregarRegistrosOriginais(int* total, const char* nomeArquivo) {
     return lista;
 }
 
+Registro* removerTopo(Registro* heap, int* n) {
+    if (*n == 0) {
+        printf("Heap já está vazio.\n");
+        return heap;
+    }
+
+    printf("Removendo registro: %s (nota %.2f)\n", heap[1].nome, heap[1].nota);
+    heap[1] = heap[*n];
+    (*n)--;
+    heap = realloc(heap, sizeof(Registro) * (*n + 1));
+    descer(heap, 1, *n);
+    return heap;
+}
+
 void consultarTopo(Registro* heap, int n) {
     if (n == 0) {
         printf("Heap vazio.\n");
@@ -95,6 +109,54 @@ void consultarTopo(Registro* heap, int n) {
     printf("Nome: %s\n", heap[1].nome);
     printf("CPF: %s\n", heap[1].cpf);
     printf("Nota: %.2f\n", heap[1].nota);
+}
+
+void menuHeap(Registro* heap, int* n) {
+    int opcao;
+    Registro novo;
+
+    do {
+        printf("\n--- MENU HEAP ---\n");
+        printf("1. Consultar topo\n");
+        printf("2. Inserir novo registro\n");
+        printf("3. Remover topo\n");
+        printf("4. Salvar e sair\n");
+        printf("Escolha: ");
+        scanf("%d", &opcao);
+        getchar(); // consumir \n
+
+        switch (opcao) {
+            case 1:
+                consultarTopo(heap, *n);
+                break;
+            case 2:
+                printf("Nome: ");
+                fgets(novo.nome, 51, stdin);
+                novo.nome[strcspn(novo.nome, "\n")] = '\0';
+
+                printf("CPF: ");
+                fgets(novo.cpf, 12, stdin);
+                getchar(); // consumir \n
+
+                printf("Nota: ");
+                scanf("%f", &novo.nota);
+                getchar();
+
+                heap = inserir(heap, novo, n);
+                printf("Registro inserido com sucesso.\n");
+                break;
+            case 3:
+                heap = removerTopo(heap, n);
+                break;
+            case 4:
+                salvarHeap(heap, *n, "heap.dat");
+                printf("Heap salvo. Encerrando.\n");
+                break;
+            default:
+                printf("Opção inválida.\n");
+        }
+
+    } while (opcao != 4);
 }
 
 int main() {
@@ -110,9 +172,7 @@ int main() {
 
     free(registros);
 
-    consultarTopo(heap, nHeap);
-
-    salvarHeap(heap, nHeap, "heap.dat");
+    menuHeap(heap, &nHeap);
 
     free(heap);
     return 0;
