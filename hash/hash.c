@@ -4,11 +4,13 @@
 
 #define TAM 100000
 
+typedef enum Estado { LIVRE, OCUPADO, REMOVIDO } Estado;
+
 typedef struct {
     char nome[51];
     char cpf[12];
     float nota;
-    int ocupado;
+    Estado estado;
 } Registro;
 
 int calcularHash(char* cpf) {
@@ -26,9 +28,15 @@ int inserir(Registro* tabela, Registro novo) {
 
     for (int i = 0; i < TAM; i++) {
         int j = (pos + i) % TAM;
-        if (!tabela[j].ocupado) {
+
+        if (tabela[j].estado == OCUPADO && strcmp(tabela[j].cpf, novo.cpf) == 0) {
+            printf("CPF já existe na tabela.\n");
+            return 0;
+        }
+
+        if (tabela[j].estado == LIVRE || tabela[j].estado == REMOVIDO) {
             tabela[j] = novo;
-            tabela[j].ocupado = 1;
+            tabela[j].estado = OCUPADO;
             return 1;
         }
     }
@@ -41,11 +49,11 @@ int consultar(Registro* tabela, char* cpf, Registro* resultado) {
 
     for (int i = 0; i < TAM; i++) {
         int j = (pos + i) % TAM;
-        if (tabela[j].ocupado && strcmp(tabela[j].cpf, cpf) == 0) {
+        if (tabela[j].estado == OCUPADO && strcmp(tabela[j].cpf, cpf) == 0) {
             *resultado = tabela[j];
             return 1;
         }
-        if (!tabela[j].ocupado) break;
+        if (tabela[j].estado == LIVRE) break;
     }
 
     return 0;
@@ -56,11 +64,11 @@ int remover(Registro* tabela, char* cpf) {
 
     for (int i = 0; i < TAM; i++) {
         int j = (pos + i) % TAM;
-        if (tabela[j].ocupado && strcmp(tabela[j].cpf, cpf) == 0) {
-            tabela[j].ocupado = 0;
+        if (tabela[j].estado == OCUPADO && strcmp(tabela[j].cpf, cpf) == 0) {
+            tabela[j].estado = REMOVIDO;
             return 1;
         }
-        if (!tabela[j].ocupado) 
+        if (tabela[j].estado == LIVRE) 
             break;
     }
 
@@ -114,7 +122,7 @@ void menu(Registro* tabela) {
             case 1:
                 printf("Digite o CPF para buscar: ");
                 fgets(cpf, 12, stdin);
-                getchar();
+                cpf[strcspn(cpf, "\n")] = '\0';
 
                 if (consultar(tabela, cpf, &r)) {
                     printf("\nRegistro encontrado:\n");
@@ -129,7 +137,7 @@ void menu(Registro* tabela) {
             case 2:
                 printf("Digite o CPF para remover: ");
                 fgets(cpf, 12, stdin);
-                getchar();
+                cpf[strcspn(cpf, "\n")] = '\0';
 
                 if (remover(tabela, cpf)){
                     printf("Removido com sucesso.\n");
@@ -146,7 +154,7 @@ void menu(Registro* tabela) {
 
                 printf("Digite CPF (11 dígitos): ");
                 fgets(r.cpf, 12, stdin);
-                getchar();
+                r.cpf[strcspn(r.cpf, "\n")] = '\0';
 
                 printf("Digite nota: ");
                 scanf("%f", &r.nota);
