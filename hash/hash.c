@@ -13,6 +13,12 @@ typedef struct {
     Estado estado;
 } Registro;
 
+typedef struct {
+    char nome[51];
+    char cpf[12];
+    float nota;
+} RegistroArquivo;
+
 int calcularHash(char* cpf) {
     char chaveStr[10];
     strncpy(chaveStr, cpf, 9);
@@ -30,9 +36,8 @@ int inserir(Registro* tabela, Registro novo) {
         int j = (pos + i) % TAM;
 
         if (tabela[j].estado == OCUPADO && strcmp(tabela[j].cpf, novo.cpf) == 0) {
-            printf("CPF já existe na tabela.\n");
             return 0;
-        }
+        } 
 
         if (tabela[j].estado == LIVRE || tabela[j].estado == REMOVIDO) {
             tabela[j] = novo;
@@ -41,7 +46,7 @@ int inserir(Registro* tabela, Registro novo) {
         }
     }
 
-    return 0;
+    return -1;
 }
 
 int consultar(Registro* tabela, char* cpf, Registro* resultado) {
@@ -78,7 +83,7 @@ int remover(Registro* tabela, char* cpf) {
 Registro* carregarRegistros(int* total, char* arquivo) {
     FILE* f = fopen(arquivo, "rb");
     if (!f) {
-        printf("Erro ao abrir registros.dat");
+        printf("Erro ao abrir registros.dat\n");
         exit(1);
     }
 
@@ -86,12 +91,25 @@ Registro* carregarRegistros(int* total, char* arquivo) {
     long tam = ftell(f);
     rewind(f);
 
-    *total = tam / sizeof(Registro);
-    Registro* lista = malloc(tam);
-    fread(lista, sizeof(Registro), *total, f);
+    *total = tam / sizeof(RegistroArquivo);
+
+    RegistroArquivo* buffer = malloc(tam);
+    fread(buffer, sizeof(RegistroArquivo), *total, f);
     fclose(f);
+
+    Registro* lista = malloc(sizeof(Registro) * (*total));
+    for (int i = 0; i < *total; i++) {
+        strcpy(lista[i].nome, buffer[i].nome);
+        strcpy(lista[i].cpf, buffer[i].cpf);
+        lista[i].nota = buffer[i].nota;
+        lista[i].estado = OCUPADO; 
+    }
+
+    free(buffer);
     return lista;
 }
+
+
 
 void salvarHash(Registro* tabela, char* arquivo) {
     FILE* f = fopen(arquivo, "wb");
@@ -160,10 +178,12 @@ void menu(Registro* tabela) {
                 scanf("%f", &r.nota);
                 getchar();
 
-                if (inserir(tabela, r)){
+                int res = inserir(tabela, r);
+                if (res == 1) {
                     printf("Inserido com sucesso.\n");
-                }
-                else{
+                } else if (res == 0) {
+                    printf("CPF já existe na tabela.\n");
+                } else {
                     printf("Tabela cheia. Inserção falhou.\n");
                 }
                 break;
