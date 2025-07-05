@@ -10,15 +10,25 @@ typedef struct {
 } Registro;
 
 void gerarNome(char *nome) {
-    char letras[] = "abcdefghijklmnopqrstuvwxyz";
-    for (int i = 0; i < 50; i++)
-        nome[i] = letras[rand() % 26];
-    nome[50] = '\0';
+    char consoantes[] = "bcdfghjklmnpqrstvwxyz";
+    char vogais[] = "aeiou";
+    int tamanho = 6 + rand() % 5;
+
+    for (int i = 0; i < tamanho; i++) {
+        if (i % 2 == 0) {
+            nome[i] = consoantes[rand() % (sizeof(consoantes) - 1)];
+        } else {
+            nome[i] = vogais[rand() % (sizeof(vogais) - 1)];
+        }
+    }
+    nome[tamanho] = '\0';
 }
 
-void gerarCPF(char *cpf) {
-    for (int i = 0; i < 11; i++)
-        cpf[i] = '0' + rand() % 10;
+void gerarCPF(int num, char *cpf) {
+    for (int i = 10; i >= 0; i--) {
+        cpf[i] = (num % 10) + '0';
+        num /= 10;
+    }
     cpf[11] = '\0';
 }
 
@@ -27,9 +37,11 @@ void gerarRegistros(char *arquivo, int qtd) {
     Registro r;
     for (int i = 0; i < qtd; i++) {
         gerarNome(r.nome);
-        gerarCPF(r.cpf);
+        gerarCPF(i, r.cpf);
         r.nota = rand() % 101;
         fwrite(&r, sizeof(Registro), 1, f);
+        printf("CPF gerado: %s    ", r.cpf);
+        printf("Nome gerado: %s\n", r.nome);
     }
     fclose(f);
 }
