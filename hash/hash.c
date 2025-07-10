@@ -3,6 +3,7 @@
 #include <string.h>
 
 #define TAM 100000
+#define HASH_FILENAME "hash/hash.dat"
 
 typedef enum Estado { LIVRE, OCUPADO, REMOVIDO } Estado;
 
@@ -29,188 +30,252 @@ int calcularHash(char* cpf) {
     return rand() % TAM;
 }
 
-int inserir(Registro* tabela, Registro novo) {
-    int pos = calcularHash(novo.cpf);
+void inicializar_hash(FILE* f) {
+    if (!f) {
+        perror("Erro: ponteiro de arquivo nulo passado para inicializar_hash");
+        return;
+    }
+
+    rewind(f);
+
+    Registro reg_livre = {0};
+    reg_livre.estado = LIVRE;
+
+    printf("Criando e formatando o arquivo de hash com %d posicoes...\n", TAM);
+    for (int i = 0; i < TAM; i++) {
+        fwrite(&reg_livre, sizeof(Registro), 1, f);
+    }
+
+    fflush(f);
+
+    printf("Arquivo de hash formatado com sucesso.\n");
+}
+
+
+
+int inserir(FILE* f, Registro novo) {
+    if (!f) return -1;
+
+    int pos_inicial = calcularHash(novo.cpf);
 
     for (int i = 0; i < TAM; i++) {
-        int j = (pos + i) % TAM;
+        int j = (pos_inicial + i) % TAM;
+        long offset = j * sizeof(Registro);
+        fseek(f, offset, SEEK_SET);
+        
+        Registro reg_atual;
+        fread(&reg_atual, sizeof(Registro), 1, f);
 
-        if (tabela[j].estado == OCUPADO && strcmp(tabela[j].cpf, novo.cpf) == 0) {
+        if (reg_atual.estado == OCUPADO && strcmp(reg_atual.cpf, novo.cpf) == 0) {
             return 0;
-        } 
+        }
 
-        if (tabela[j].estado == LIVRE || tabela[j].estado == REMOVIDO) {
-            tabela[j] = novo;
-            tabela[j].estado = OCUPADO;
+        if (reg_atual.estado == LIVRE || reg_atual.estado == REMOVIDO) {
+            novo.estado = OCUPADO;
+            fseek(f, offset, SEEK_SET);
+            fwrite(&novo, sizeof(Registro), 1, f);
+            fflush(f);
             return 1;
         }
     }
-
     return -1;
 }
 
-int consultar(Registro* tabela, char* cpf, Registro* resultado) {
-    int pos = calcularHash(cpf);
+
+int consultar(FILE* f, char* cpf, Registro* resultado) {
+    if (!f) return 0;
+
+    int pos_inicial = calcularHash(cpf);
 
     for (int i = 0; i < TAM; i++) {
-        int j = (pos + i) % TAM;
-        if (tabela[j].estado == OCUPADO && strcmp(tabela[j].cpf, cpf) == 0) {
-            *resultado = tabela[j];
+        int j = (pos_inicial + i) % TAM;
+        long offset = j * sizeof(Registro);
+        fseek(f, offset, SEEK_SET);
+        
+        Registro reg_atual;
+        fread(&reg_atual, sizeof(Registro), 1, f);
+
+        if (reg_atual.estado == LIVRE) {
+            return 0;
+        }
+
+        if (reg_atual.estado == OCUPADO && strcmp(reg_atual.cpf, cpf) == 0) {
+            *resultado = reg_atual;
             return 1;
         }
-        if (tabela[j].estado == LIVRE) break;
     }
 
     return 0;
 }
 
-int remover(Registro* tabela, char* cpf) {
-    int pos = calcularHash(cpf);
+int remover(FILE* f, char* cpf) {
+    if (!f) return 0;
+
+    int pos_inicial = calcularHash(cpf);
 
     for (int i = 0; i < TAM; i++) {
-        int j = (pos + i) % TAM;
-        if (tabela[j].estado == OCUPADO && strcmp(tabela[j].cpf, cpf) == 0) {
-            tabela[j].estado = REMOVIDO;
+        int j = (pos_inicial + i) % TAM;
+        long offset = j * sizeof(Registro);
+        fseek(f, offset, SEEK_SET);
+
+        Registro reg_atual;
+        fread(&reg_atual, sizeof(Registro), 1, f);
+
+        if (reg_atual.estado == LIVRE) {
+            return 0;
+        }
+
+        if (reg_atual.estado == OCUPADO && strcmp(reg_atual.cpf, cpf) == 0) {
+            reg_atual.estado = REMOVIDO;
+            fseek(f, offset, SEEK_SET);
+            fwrite(&reg_atual, sizeof(Registro), 1, f);
+            fflush(f);
             return 1;
         }
-        if (tabela[j].estado == LIVRE) 
-            break;
     }
 
     return 0;
 }
 
-Registro* carregarRegistros(int* total, char* arquivo) {
-    FILE* f = fopen(arquivo, "rb");
+void menu(FILE* f) {
+    // Verificação de segurança: se o arquivo não estiver aberto, encerra a função.
     if (!f) {
-        printf("Erro ao abrir registros.dat\n");
-        exit(1);
-    }
-
-    fseek(f, 0, SEEK_END);
-    long tam = ftell(f);
-    rewind(f);
-
-    *total = tam / sizeof(RegistroArquivo);
-
-    RegistroArquivo* buffer = malloc(tam);
-    fread(buffer, sizeof(RegistroArquivo), *total, f);
-    fclose(f);
-
-    Registro* lista = malloc(sizeof(Registro) * (*total));
-    for (int i = 0; i < *total; i++) {
-        strcpy(lista[i].nome, buffer[i].nome);
-        strcpy(lista[i].cpf, buffer[i].cpf);
-        lista[i].nota = buffer[i].nota;
-        lista[i].estado = OCUPADO; 
-    }
-
-    free(buffer);
-    return lista;
-}
-
-
-
-void salvarHash(Registro* tabela, char* arquivo) {
-    FILE* f = fopen(arquivo, "wb");
-    if (!f) {
-        printf("Erro ao salvar hash.dat");
+        printf("Erro critico: O arquivo de hash nao esta aberto para o menu.\n");
         return;
     }
-    fwrite(tabela, sizeof(Registro), TAM, f);
-    fclose(f);
-}
 
-void menu(Registro* tabela) {
     int opcao;
     char cpf[12];
     Registro r;
 
     do {
         printf("\n--- MENU HASH ---\n");
-        printf("1. Consultar CPF\n");
-        printf("2. Remover CPF\n");
+        printf("1. Consultar por CPF\n");
+        printf("2. Remover por CPF\n");
         printf("3. Inserir novo registro\n");
         printf("4. Sair\n");
-        printf("Escolha: ");
-        scanf("%d", &opcao);
-        getchar();
+        printf("--------------------------------------\n");
+        printf("Escolha uma opcao: ");
+
+        if (scanf("%d", &opcao) != 1) {
+            opcao = -1;
+        }
+
+        while(getchar() != '\n');
 
         switch (opcao) {
             case 1:
-                printf("Digite o CPF para buscar: ");
+                printf("Digite o CPF para buscar (11 digitos): ");
                 fgets(cpf, 12, stdin);
                 cpf[strcspn(cpf, "\n")] = '\0';
 
-                if (consultar(tabela, cpf, &r)) {
-                    printf("\nRegistro encontrado:\n");
-                    printf("Nome: %s\n", r.nome);
-                    printf("CPF: %s\n", r.cpf);
-                    printf("Nota: %.2f\n", r.nota);
+                if (consultar(f, cpf, &r)) {
+                    printf("\n>>> Registro Encontrado:\n");
+                    printf("  Nome: %s\n", r.nome);
+                    printf("  CPF:  %s\n", r.cpf);
+                    printf("  Nota: %.2f\n", r.nota);
                 } else {
-                    printf("Registro não encontrado.\n");
+                    printf(">>> Registro com CPF '%s' nao encontrado.\n", cpf);
                 }
                 break;
 
             case 2:
-                printf("Digite o CPF para remover: ");
+                printf("Digite o CPF para remover (11 digitos): ");
                 fgets(cpf, 12, stdin);
                 cpf[strcspn(cpf, "\n")] = '\0';
-
-                if (remover(tabela, cpf)){
-                    printf("Removido com sucesso.\n");
-                }
-                else{
-                    printf("CPF não encontrado.\n");
+                
+                if (remover(f, cpf)) {
+                    printf(">>> Registro com CPF '%s' removido com sucesso.\n", cpf);
+                } else {
+                    printf(">>> CPF nao encontrado para remocao.\n");
                 }
                 break;
 
             case 3:
-                printf("Digite nome: ");
+                printf("Inserindo novo registro:\n");
+                printf("  Digite o nome: ");
                 fgets(r.nome, 51, stdin);
                 r.nome[strcspn(r.nome, "\n")] = '\0';
 
-                printf("Digite CPF (11 dígitos): ");
+                printf("  Digite o CPF (11 digitos): ");
                 fgets(r.cpf, 12, stdin);
                 r.cpf[strcspn(r.cpf, "\n")] = '\0';
 
-                printf("Digite nota: ");
+                printf("  Digite a nota: ");
                 scanf("%f", &r.nota);
-                getchar();
+                while(getchar() != '\n');
 
-                int res = inserir(tabela, r);
-                if (res == 1) {
-                    printf("Inserido com sucesso.\n");
-                } else if (res == 0) {
-                    printf("CPF já existe na tabela.\n");
+                int resultado_insercao = inserir(f, r);
+                if (resultado_insercao == 1) {
+                    printf("Registro inserido com sucesso!\n");
+                } else if (resultado_insercao == 0) {
+                    printf("Falha: CPF '%s' ja existe na tabela.\n", r.cpf);
                 } else {
-                    printf("Tabela cheia. Inserção falhou.\n");
+                    printf("Falha: Tabela de hash esta cheia.\n");
                 }
                 break;
 
             case 4:
-                printf("Saindo...\n");
+                printf("Saindo do menu...\n");
                 break;
 
             default:
-                printf("Opção inválida.\n");
+                printf("Opcao invalida. Por favor, tente novamente.\n");
+                break;
         }
     } while (opcao != 4);
 }
 
 int main() {
-    int total;
-    Registro* tabelaHash = calloc(TAM, sizeof(Registro));
-    Registro* registros = carregarRegistros(&total, "./registros/registros.dat");
+    FILE *f_hash;
 
-    for (int i = 0; i < total; i++) {
-        inserir(tabelaHash, registros[i]);
+    f_hash = fopen(HASH_FILENAME, "rb+");
+
+    if (f_hash == NULL) {
+        printf("Arquivo '%s' nao encontrado.\n", HASH_FILENAME);
+
+        f_hash = fopen(HASH_FILENAME, "wb+");
+        if (f_hash == NULL) {
+            perror("Nao foi possivel criar o arquivo de hash");
+            exit(1);
+        }
+      
+        inicializar_hash(f_hash);
+
+        FILE* f_registros = fopen("./registros/registros.dat", "rb");
+        if (!f_registros) {
+            printf("AVISO: Nao foi possivel abrir './registros/registros.dat' para a carga inicial.\n");
+            printf("A tabela de hash foi criada vazia.\n");
+        } else {
+            printf("Populando a tabela de hash com dados de './registros/registros.dat'...\n");
+            
+            RegistroArquivo reg_origem; 
+            int contador = 0;
+            while(fread(&reg_origem, sizeof(RegistroArquivo), 1, f_registros) == 1) {
+                Registro reg_destino;
+                strcpy(reg_destino.nome, reg_origem.nome);
+                strcpy(reg_destino.cpf, reg_origem.cpf);
+                reg_destino.nota = reg_origem.nota;
+                reg_destino.estado = OCUPADO;
+
+                inserir(f_hash, reg_destino);
+
+                if (++contador % 500 == 0) {
+                    printf("... %d registros inseridos.\n", contador);
+                }
+            }
+            fclose(f_registros);
+            printf("Carga inicial concluida com %d registros.\n", contador);
+        }
     }
-    free(registros);
+    else {
+        printf("Arquivo de hash '%s' encontrado. Carregando...\n", HASH_FILENAME);
+    }
 
-    menu(tabelaHash);
+    menu(f_hash);
 
-    salvarHash(tabelaHash, "hash.dat");
-    free(tabelaHash);
+    printf("Encerrando e fechando o arquivo de hash.\n");
+    fclose(f_hash); 
+    
     return 0;
 }
