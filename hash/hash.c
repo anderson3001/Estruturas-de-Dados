@@ -14,9 +14,9 @@ int calcularHash(char* cpf) {
     return rand() % TAM;
 }
 
-void inicializar_hash(FILE* f) {
+void inicializarHash(FILE* f) {
     if (!f) {
-        perror("Erro: ponteiro de arquivo nulo passado para inicializar_hash");
+        perror("Erro: ponteiro de arquivo nulo passado para inicializarHash");
         return;
     }
 
@@ -122,7 +122,6 @@ int remover(FILE* f, char* cpf) {
 }
 
 void menu(FILE* f) {
-    // Verificação de segurança: se o arquivo não estiver aberto, encerra a função.
     if (!f) {
         printf("Erro critico: O arquivo de hash nao esta aberto para o menu.\n");
         return;
@@ -211,20 +210,20 @@ void menu(FILE* f) {
 }
 
 int main() {
-    FILE *f_hash;
+    FILE *fHash;
 
-    f_hash = fopen(HASH_FILENAME, "rb+");
+    fHash = fopen(HASH_FILENAME, "rb+");
 
-    if (f_hash == NULL) {
+    if (fHash == NULL) {
         printf("Arquivo '%s' nao encontrado.\n", HASH_FILENAME);
 
-        f_hash = fopen(HASH_FILENAME, "wb+");
-        if (f_hash == NULL) {
+        fHash = fopen(HASH_FILENAME, "wb+");
+        if (fHash == NULL) {
             perror("Nao foi possivel criar o arquivo de hash");
             exit(1);
         }
       
-        inicializar_hash(f_hash);
+        inicializarHash(fHash);
 
         FILE* f_registros = fopen("./registros/registros.dat", "rb");
         if (!f_registros) {
@@ -242,7 +241,7 @@ int main() {
                 reg_destino.nota = reg_origem.nota;
                 reg_destino.estado = OCUPADO;
 
-                inserir(f_hash, reg_destino);
+                inserir(fHash, reg_destino);
 
                 if (++contador % 500 == 0) {
                     printf("... %d registros inseridos.\n", contador);
@@ -256,10 +255,10 @@ int main() {
         printf("Arquivo de hash '%s' encontrado. Carregando...\n", HASH_FILENAME);
     }
 
-    menu(f_hash);
+    menu(fHash);
 
     printf("Encerrando e fechando o arquivo de hash.\n");
-    fclose(f_hash); 
+    fclose(fHash); 
     
     return 0;
 }
