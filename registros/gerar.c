@@ -25,10 +25,8 @@ void gerarNome(char *nome) {
 }
 
 void gerarCPF(int num, char *cpf) {
-    for (int i = 10; i >= 0; i--) {
-        cpf[i] = (num % 10) + '0';
-        num /= 10;
-    }
+    for (int i = 0; i < 11; i++)
+        cpf[i] = '0' + rand() % 10;
     cpf[11] = '\0';
 }
 
@@ -48,6 +46,6 @@ void gerarRegistros(char *arquivo, int qtd) {
 
 int main() {
     srand(time(NULL));
-    gerarRegistros("registros.dat", 10000);
+    gerarRegistros("registros/registros.dat", 10000);
     return 0;
 }
