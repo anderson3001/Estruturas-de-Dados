@@ -3,11 +3,7 @@
 #include <string.h>
 #include <time.h>
 
-typedef struct {
-    char nome[51];
-    char cpf[12];
-    float nota;
-} Registro;
+#include "gerar.h"
 
 void gerarNome(char *nome) {
     char consoantes[] = "bcdfghjklmnpqrstvwxyz";

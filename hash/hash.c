@@ -1,24 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "hash.h"
 
-#define TAM 100000
-#define HASH_FILENAME "hash/hash.dat"
-
-typedef enum Estado { LIVRE, OCUPADO, REMOVIDO } Estado;
-
-typedef struct {
-    char nome[51];
-    char cpf[12];
-    float nota;
-    Estado estado;
-} Registro;
-
-typedef struct {
-    char nome[51];
-    char cpf[12];
-    float nota;
-} RegistroArquivo;
 
 int calcularHash(char* cpf) {
     char chaveStr[10];

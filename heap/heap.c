@@ -1,14 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define REG_TAM sizeof(Registro)
-
-typedef struct {
-    char nome[51];
-    char cpf[12];
-    float nota;
-} Registro;
+#include "heap.h"
 
 int pai(int i) {
     return i / 2;
